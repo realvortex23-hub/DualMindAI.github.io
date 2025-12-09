@@ -1,6 +1,6 @@
 // script.js  (Frontend – completely safe, no API key here!)
 
-const PROXY_URL = "https://your-vercel-project.vercel.app/api/chat";  // ← CHANGE THIS!
+const PROXY_URL = "dualmindai-lp6i7fvq5-real-ares-projects.vercel.app/api/chat";  // ← CHANGE THIS!
 
 const chatDiv = document.getElementById("chat");
 const input = document.getElementById("messageInput");
