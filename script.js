@@ -1,50 +1,75 @@
-// script.js  →  Instant-working version (uses free public proxy)
-const chatMessages = document.getElementById("chat-messages");
-const userInput = document.getElementById("user-input");
-const sendBtn = document.getElementById("send-btn");
+// script.js  (Frontend – completely safe, no API key here!)
 
-sendBtn.onclick = sendMessage;
-userInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
+const PROXY_URL = "https://your-vercel-project.vercel.app/api/chat";  // ← CHANGE THIS!
+
+const chatDiv = document.getElementById("chat");
+const input = document.getElementById("messageInput");
+const sendButton = document.getElementById("sendButton");
+let history = [];  // Keeps conversation context
+
+function addMessage(sender, text) {
+  const div = document.createElement("div");
+  div.className = `message ${sender}`;
+  div.textContent = text;
+  chatDiv.appendChild(div);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+function showTyping() {
+  const typing = document.createElement("div");
+  typing.className = "typing";
+  typing.id = "typingIndicator";
+  typing.innerHTML = "<span></span><span></span><span></span>";
+  chatDiv.appendChild(typing);
+  chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+function hideTyping() {
+  const indicator = document.getElementById("typingIndicator");
+  if (indicator) indicator.remove();
+}
 
 async function sendMessage() {
-  const text = userInput.value.trim();
-  if (!text) return;
+  const message = input.value.trim();
+  if (!message) return;
 
-  addMessage("user", text);
-  userInput.value = "";
-  addMessage("bot", '<div class="loading"><span></span><span></span><span></span></div>');
+  addMessage("user", message);
+  input.value = "";
+  sendButton.disabled = true;
+  showTyping();
 
   try {
-    const response = await fetch("https://gemini-proxy.vercel.app/api/gemini", {
+    const response = await fetch(PROXY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text })
+      body: JSON.stringify({ message, history })
     });
 
     const data = await response.json();
+    hideTyping();
 
-    chatMessages.lastElementChild.remove();
-    addMessage("bot", data.reply
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>'));
+    if (data.reply) {
+      addMessage("bot", data.reply);
+      history.push({ role: "user", parts: [{ text: message }] });
+      history.push({ role: "model", parts: [{ text: data.reply }] });
+    } else {
+      addMessage("bot", "Sorry, something went wrong: " + (data.error || "Unknown"));
+    }
   } catch (err) {
-    chatMessages.lastElementChild.remove();
-    addMessage("bot", `Error: ${err.message}`);
+    hideTyping();
+    addMessage("bot", "Connection failed – check your proxy URL");
+    console.error(err);
+  } finally {
+    sendButton.disabled = false;
+    input.focus();
   }
 }
 
-function addMessage(sender, html) {
-  const div = document.createElement("div");
-  div.className = `message ${sender}-message`;
-  div.innerHTML = html;
-  chatMessages.appendChild(div);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+// Event listeners
+sendButton.addEventListener("click", sendMessage);
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
 
-// Welcome message
-addMessage("bot", "Hey! I'm a Gemini-1.5-Flash powered chatbot. Ask me anything!");
+// Focus input on load
+window.addEventListener("load", () => input.focus());
